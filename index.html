@@ -14,7 +14,6 @@
         </div>
     </nav>
     
-
     <div class="container mt-4">
         <h1>ShardingJH</h1>
         <h2>Check members and orders.</h2>
@@ -30,6 +29,16 @@
             <div class="tab-pane fade show active" id="data" role="tabpanel" aria-labelledby="data-tab">
                 <div class="row">
                     <div class="col-12">
+                        <!-- 在 table 上方加入 4 個按鈕 -->
+                        <div class="d-flex mt-3 gap-2">
+                            <button type="button" class="btn btn-primary" id="filterAll">All</button>
+                            <button type="button" class="btn btn-secondary" id="filterServer1">Server 1</button>
+                            <button type="button" class="btn btn-secondary" id="filterServer2">Server 2</button>
+                            <button type="button" class="btn btn-secondary" id="filterServer3">Server 3</button>
+                            <button type="button" class="btn btn-success ms-auto" id="newMemberBtn">New Member</button>
+                            <input type="text" class="form-control ms-2" id="searchMemberInput" placeholder="Search by name" style="max-width: 200px;">
+                        </div>
+                        <!-- 原本的 table -->
                         <table class="table table-striped" id="members-table">
                             <thead>
                                 <tr>
@@ -52,6 +61,54 @@
             </div>
             <div class="tab-pane fade" id="chart" role="tabpanel" aria-labelledby="chart-tab">
                 hi
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editMemberModal" tabindex="-1" aria-labelledby="editMemberModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editMemberModalLabel">Edit Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editMemberForm">
+                <div class="mb-3">
+                    <label for="editMemberId" class="form-label">Member ID</label>
+                    <input type="text" class="form-control bg-light" id="editMemberId" required readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="editMemberName" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="editMemberName" required>
+                </div>
+                </form>
+            </div>
+            <div class="modal-footer justify-content-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateMemberBtn">Update</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增 New Member Modal -->
+    <div class="modal fade" id="newMemberModal" tabindex="-1" aria-labelledby="newMemberModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newMemberModalLabel">New Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newMemberForm">
+                <div class="mb-3">
+                    <label for="newMemberName" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="newMemberName" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="submitNewMemberBtn">Submit</button>
+                </form>
+            </div>
             </div>
         </div>
     </div>
