@@ -35,4 +35,4 @@ jobs:
             sudo systemctl start httpd
             sudo systemctl enable httpd
             cd ${{ secrets.TARGET_DIR }}
-            sudo mv * /var/www/html
+            sudo rsync -av --delete ./ /var/www/html/
