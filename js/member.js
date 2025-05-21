@@ -1,7 +1,7 @@
 // local
 // const API_URL = `http://localhost:8080`;
 // production
-const API_URL = `http://3.147.58.62:8080`;
+const API_URL = `http://3.147.58.62:8081`;
 
 const PAGE_SIZE = 20;
 
