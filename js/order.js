@@ -23,7 +23,12 @@ async function fetchOrders(startDate = "2023-01-01", endDate = getTodayStr()) {
         const response = await fetch(url);
         const result = await response.json();
         if (result.code === "0000") {
-            ordersData = result.data || [];
+            // 依 createTime 由新到舊排序
+            ordersData = (result.data || []).sort((a, b) => {
+                const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+                const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+                return tb - ta;
+            });
             ordersCurrentPage = 1;
             renderOrdersTable();
             renderOrdersPagination();
@@ -62,21 +67,23 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
 
     // 渲染 tbody
     if (errorMsg) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-danger">${errorMsg}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-danger">${errorMsg}</td></tr>`;
         return;
     }
     if (!pageOrders.length) {
-        tbody.innerHTML = `<tr><td colspan="7">No orders found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">No orders found.</td></tr>`;
         return;
     }
     tbody.innerHTML = pageOrders.map(order => `
         <tr>
-            <td>${order.id.orderId}</td>
-            <td>${order.id.version}</td>
+            <td>
+                <a href="#" class="order-id-link" data-order-id="${order.id.orderId}" data-create-time="${order.createTime}">
+                    ${order.id.orderId}
+                </a>
+            </td>
             <td>${order.memberId}</td>
             <td>${order.createTime ? order.createTime.replace('T', ' ') : ''}</td>
-            <td>${order.isPaid ? "Yes" : "No"}</td>
-            <td>${order.isDeleted ? "Yes" : "No"}</td>
+            <td class="text-center">${order.isPaid ? "✅" : "❌"}</td>
             <td>
                 <button class="btn btn-sm btn-primary me-1" onclick="editOrder('${order.id.orderId}', ${order.id.version})">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteOrder('${order.id.orderId}', ${order.id.version})">Delete</button>
@@ -84,10 +91,96 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
         </tr>
     `).join('');
 
+    // 綁定 Order ID 點擊事件
+    Array.from(tbody.querySelectorAll('.order-id-link')).forEach(link => {
+        link.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const orderId = this.getAttribute('data-order-id');
+            const createTime = this.getAttribute('data-create-time');
+            await showOrderHistoryModal(orderId, createTime);
+        });
+    });
+
     renderOrdersPagination(filteredOrders);
 }
 
-// 修改 renderOrdersPagination 以支援分頁資料長度
+// 顯示訂單版本歷史的 modal
+async function showOrderHistoryModal(orderId, createTime) {
+    const modal = new bootstrap.Modal(document.getElementById('orderHistoryModal'));
+    const body = document.getElementById('orderHistoryModalBody');
+    body.innerHTML = `<div class="text-secondary">Loading...</div>`;
+
+    // 只保留年月日
+    const dateOnly = createTime ? createTime.substring(0, 10) : "";
+
+    try {
+        const resp = await fetch(`${ORDER_API_URL}/order/history?orderId=${encodeURIComponent(orderId)}&createTime=${encodeURIComponent(dateOnly)}`);
+        const result = await resp.json();
+        if (result.code === "0000" && Array.isArray(result.data) && result.data.length > 0) {
+            body.innerHTML = `
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Create Time</th>
+                            <th>Is Paid</th>
+                            <th>Member ID</th>
+                            <th>Expired At</th>
+                            <th>Is Deleted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${result.data.map(order => `
+                            <tr>
+                                <td>${order.id.version}</td>
+                                <td>${order.createTime ? order.createTime.replace('T', ' ') : ''}</td>
+                                <td>${order.isPaid ? "Yes" : "No"}</td>
+                                <td>${order.memberId}</td>
+                                <td>
+                                    ${order.expiredAt
+                                        ? order.expiredAt.replace('T', ' ')
+                                        : `<span class="text-success fw-bold">Current</span>`
+                                    }
+                                </td>
+                                <td>${order.isDeleted ? "Yes" : "No"}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            body.innerHTML = `<div class="text-danger">No history found.</div>`;
+        }
+    } catch (err) {
+        body.innerHTML = `<div class="text-danger">Failed to load history: ${err}</div>`;
+    }
+    modal.show();
+}
+
+function editOrder(orderId, version) {
+    // 找到該訂單
+    const order = ordersData.find(
+        o => o.id.orderId === orderId && o.id.version === version
+    );
+    if (!order) {
+        alert("Order not found!");
+        return;
+    }
+    editingOrder = order;
+
+    // 填入表單
+    document.getElementById("editOrderId").value = order.id.orderId;
+    document.getElementById("editOrderVersion").value = order.id.version;
+    document.getElementById("editOrderMemberId").value = order.memberId;
+    document.getElementById("editOrderCreateTime").value = order.createTime ? order.createTime.replace('T', ' ') : '';
+    document.getElementById("editOrderIsPaid").value = order.isPaid;
+    document.getElementById("editOrderIsDeleted").value = order.isDeleted;
+
+    // 顯示 modal
+    const modal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+    modal.show();
+}
+
 function renderOrdersPagination(filteredOrders = null) {
     const data = filteredOrders || ordersData;
     const totalPages = Math.max(1, Math.ceil(data.length / ORDER_PAGE_SIZE));
@@ -135,8 +228,7 @@ function renderOrdersPagination(filteredOrders = null) {
     pagination.appendChild(nextLi);
 }
 
-function editOrder(orderId, version) {
-    // 找到該訂單
+function deleteOrder(orderId, version) {
     const order = ordersData.find(
         o => o.id.orderId === orderId && o.id.version === version
     );
@@ -144,19 +236,27 @@ function editOrder(orderId, version) {
         alert("Order not found!");
         return;
     }
-    editingOrder = order;
-
-    // 填入表單
-    document.getElementById("editOrderId").value = order.id.orderId;
-    document.getElementById("editOrderVersion").value = order.id.version;
-    document.getElementById("editOrderMemberId").value = order.memberId;
-    document.getElementById("editOrderCreateTime").value = order.createTime ? order.createTime.replace('T', ' ') : '';
-    document.getElementById("editOrderIsPaid").value = order.isPaid;
-    document.getElementById("editOrderIsDeleted").value = order.isDeleted;
-
-    // 顯示 modal
-    const modal = new bootstrap.Modal(document.getElementById('editOrderModal'));
-    modal.show();
+    if (!confirm(`Are you sure you want to delete order ${orderId} ?`)) {
+        return;
+    }
+    fetch(`${ORDER_API_URL}/order/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order)
+    })
+    .then(resp => resp.json())
+    .then(result => {
+        if (result.code === "0000") {
+            alert("Order deleted successfully!");
+            localStorage.setItem("activeTab", "chart");
+            window.location.reload();
+        } else {
+            alert("Delete failed: " + result.message);
+        }
+    })
+    .catch(err => {
+        alert("Delete failed: " + err);
+    });
 }
 
 // 綁定表單送出事件
@@ -261,5 +361,80 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.className = "btn " + (orderServerFilter === (s === "All" ? "All" : `Server ${i}`) ? "btn-primary" : "btn-secondary");
             }
         });
+    }
+
+    // 綁定 New Order 按鈕事件
+    const newOrderBtn = document.getElementById("newOrderBtn");
+    if (newOrderBtn) {
+        const newOrderModal = new bootstrap.Modal(document.getElementById('newOrderModal'));
+        const orderCreatedModal = new bootstrap.Modal(document.getElementById('orderCreatedModal'));
+        newOrderBtn.addEventListener("click", () => {
+            document.getElementById("newOrderForm").reset();
+            newOrderModal.show();
+        });
+
+        // 綁定表單送出事件
+        document.getElementById("newOrderForm").onsubmit = async function(e) {
+            e.preventDefault();
+            const isPaid = document.getElementById("newOrderIsPaid").checked ? 1 : 0;
+            const memberId = document.getElementById("newOrderMemberId").value.trim();
+            if (!memberId) {
+                alert("Please enter member ID.");
+                return;
+            }
+            // 取得本地現在時間（yyyy-MM-ddTHH:mm:ss）
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const createTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+
+            try {
+                const resp = await fetch(`${ORDER_API_URL}/order/save`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        createTime,
+                        isPaid,
+                        memberId
+                    })
+                });
+                const result = await resp.json();
+                if (result.code === "0000") {
+                    newOrderModal.hide();
+                    const order = result.data;
+                    const body = document.getElementById("orderCreatedModalBody");
+                    body.innerHTML = `
+                        <div><strong>Order ID:</strong> ${order.id.orderId}</div>
+                        <div><strong>Member ID:</strong> ${order.memberId}</div>
+                        <div><strong>Create Time:</strong> ${order.createTime ? order.createTime.replace('T', ' ') : ''}</div>
+                        <div><strong>Is Paid:</strong> ${order.isPaid ? "Yes" : "No"}</div>
+                    `;
+                    // 等 newOrderModal 關閉後再開 orderCreatedModal
+                    document.getElementById('newOrderModal').addEventListener('hidden.bs.modal', function handler() {
+                        orderCreatedModal.show();
+                        document.getElementById('newOrderModal').removeEventListener('hidden.bs.modal', handler);
+                    });
+                    // 關閉 orderCreatedModal 後 reload
+                    const closeBtn = document.getElementById("closeOrderCreatedBtn");
+                    closeBtn.onclick = function() {
+                        localStorage.setItem("activeTab", "chart");
+                        window.location.reload();
+                    };
+                    document.getElementById('orderCreatedModal').addEventListener('hidden.bs.modal', function handler() {
+                        localStorage.setItem("activeTab", "chart");
+                        window.location.reload();
+                        document.getElementById('orderCreatedModal').removeEventListener('hidden.bs.modal', handler);
+                    });
+                } else {
+                    alert("Create failed: " + result.message);
+                }
+            } catch (err) {
+                alert("Create failed: " + err);
+            }
+        };
     }
 });
