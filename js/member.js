@@ -1,7 +1,11 @@
 // local
-// const API_URL = `http://localhost:8080`;
+// const API_URL_1 = `http://localhost:8081`;
+// const API_URL_2 = `http://localhost:8082`;
+// const API_URL_3 = `http://localhost:8083`;
 // production
-const API_URL = `http://3.147.58.62:8081`;
+const API_URL_1 = `http://3.147.58.62:8081`;
+const API_URL_2 = `http://3.15.149.110:8082`;
+const API_URL_3 = `http://52.15.151.104:8083`;
 
 const PAGE_SIZE = 20;
 
@@ -12,7 +16,7 @@ let searchKeyword = "";
 // 取得會員資料
 async function fetchMembers() {
     try {
-        const FETCH_MEMBER_URL = API_URL + "/user/getAll";
+        const FETCH_MEMBER_URL = API_URL_1 + "/user/getAll";
         const response = await fetch(FETCH_MEMBER_URL);
         const result = await response.json();
         if (result.code === "0000") {
@@ -87,7 +91,7 @@ function editMember(id) {
             return;
         }
         try {
-            const resp = await fetch(`${API_URL}/user/update`, {
+            const resp = await fetch(`${API_URL_1}/user/update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: newId, name: newName })
@@ -108,7 +112,7 @@ function editMember(id) {
 }
 function deleteMember(id) {
     if (!confirm(`Are you sure you want to delete member ${id}?`)) return;
-    fetch(`${API_URL}/user/delete/${id}`, {
+    fetch(`${API_URL_1}/user/delete/${id}`, {
         method: "DELETE"
     })
     .then(resp => resp.json())
@@ -201,7 +205,7 @@ function showNewMemberModal() {
             return;
         }
         try {
-            const resp = await fetch(`${API_URL}/user/save`, {
+            const resp = await fetch(`${API_URL_1}/user/save`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name })
@@ -222,14 +226,48 @@ function showNewMemberModal() {
     newMemberModal.show();
 }
 
+function setMemberFilterBtnStyle(active) {
+    const btns = [
+        { id: "filterAll", key: "All" },
+        { id: "filterServer1", key: "Server 1" },
+        { id: "filterServer2", key: "Server 2" },
+        { id: "filterServer3", key: "Server 3" }
+    ];
+    btns.forEach(btn => {
+        const el = document.getElementById(btn.id);
+        if (el) {
+            el.classList.remove("btn-primary", "btn-secondary");
+            el.classList.add(active === btn.key ? "btn-primary" : "btn-secondary");
+        }
+    });
+}
+
+function showMemberLoadingSpinner() {
+    const tbody = document.querySelector("#members-table tbody");
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="3" class="text-center">
+                <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    // 預設 All 為 primary
+    setMemberFilterBtnStyle("All");
+
     fetchMembers();
 
     // 綁定 All 按鈕事件
     const allBtn = document.getElementById("filterAll");
     if (allBtn) {
         allBtn.addEventListener("click", () => {
+            showMemberLoadingSpinner();
             fetchMembers();
+            setMemberFilterBtnStyle("All");
         });
     }
 
@@ -247,6 +285,75 @@ document.addEventListener("DOMContentLoaded", () => {
             currentPage = 1;
             renderTable();
             renderPagination();
+        });
+    }
+
+    // 綁定 Server 1 按鈕事件
+    const server1Btn = document.getElementById("filterServer1");
+    if (server1Btn) {
+        server1Btn.addEventListener("click", async () => {
+            showMemberLoadingSpinner();
+            setMemberFilterBtnStyle("Server 1");
+            try {
+                const response = await fetch(`${API_URL_1}/user/getAllLocal`);
+                const result = await response.json();
+                if (Array.isArray(result)) {
+                    members = result;
+                    currentPage = 1;
+                    renderTable();
+                    renderPagination();
+                } else {
+                    showError("API Error: Unexpected response format");
+                }
+            } catch (error) {
+                showError("Can't fetch member data: " + error);
+            }
+        });
+    }
+
+    // 綁定 Server 2 按鈕事件
+    const server2Btn = document.getElementById("filterServer2");
+    if (server2Btn) {
+        server2Btn.addEventListener("click", async () => {
+            showMemberLoadingSpinner();
+            setMemberFilterBtnStyle("Server 2");
+            try {
+                const response = await fetch(`${API_URL_2}/user/getAllLocal`);
+                const result = await response.json();
+                if (Array.isArray(result)) {
+                    members = result;
+                    currentPage = 1;
+                    renderTable();
+                    renderPagination();
+                } else {
+                    showError("API Error: Unexpected response format");
+                }
+            } catch (error) {
+                showError("Can't fetch member data: " + error);
+            }
+        });
+    }
+
+    // 綁定 Server 3 按鈕事件
+    const server3Btn = document.getElementById("filterServer3");
+    if (server3Btn) {
+        server3Btn.addEventListener("click", async () => {
+            showMemberLoadingSpinner();
+            setMemberFilterBtnStyle("Server 3");
+            try {
+                const response = await fetch(`${API_URL_3}/user/getAllLocal`);
+                const result = await response.json();
+                if (Array.isArray(result)) {
+                    members = result;
+                    currentPage = 1;
+                    renderTable();
+                    renderPagination();
+                } else {
+                    showError("API Error: Unexpected response format");
+                }
+            } catch (error) {
+                showError("Can't fetch member data: " + error);
+            }
         });
     }
 });
