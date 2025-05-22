@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css">
 </head>
 <body>
+    <div class="bg-overlay"></div>
+    <!-- 左側 sticky 圖片 -->
+    <img src="http://3.15.149.110:8082/static/lookup?fileName=left-banner.gif" alt="Left Banner" class="side-banner left-banner">
+    <!-- 右側 sticky 圖片 -->
+    <img src="http://52.15.151.104:8083/static/lookup?fileName=right-banner.gif" alt="Right Banner" class="side-banner right-banner">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#" style="font-size: 1.5rem;">ShardingJH</a>
@@ -39,7 +44,7 @@
                             <input type="text" class="form-control ms-2" id="searchMemberInput" placeholder="Search by name" style="max-width: 200px;">
                         </div>
                         <!-- 原本的 table -->
-                        <table class="table table-striped table-bordered" id="members-table">
+                        <table class="table table-striped table-bordered table-hover" id="members-table">
                             <thead>
                                 <tr>
                                     <th scope="col">ID</th>
@@ -70,7 +75,7 @@
                             <button type="button" class="btn btn-success ms-auto" id="newOrderBtn">New Order</button>
                             <input type="text" class="form-control ms-2" id="searchOrderInput" placeholder="Search by order id" style="max-width: 200px;">
                         </div>
-                        <table class="table table-bordered table-striped" id="orders-table">
+                        <table class="table table-bordered table-striped table-hover" id="orders-table">
                             <thead>
                                 <tr>
                                     <th>Order ID</th>

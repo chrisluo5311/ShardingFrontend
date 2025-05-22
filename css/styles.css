@@ -33,3 +33,47 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #343a40;
     color: white;
 }
+
+.side-banner {
+    position: fixed;
+    top: 150px; /* 可依需求調整 */
+    width: 80px;  /* 長方形寬度 */
+    height: 500px; /* 長方形高度 */
+    z-index: 1050;
+    object-fit: cover;
+}
+.left-banner {
+    left: 30px;
+}
+.right-banner {
+    right: 30px;
+}
+/* 若怕擋到內容，可加 padding 給 container */
+@media (min-width: 992px) {
+    .container {
+        padding-left: 70px;
+        padding-right: 70px;
+    }
+}
+
+.bg-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    background-image: url('http://3.147.58.62:8081/static/lookup?fileName=bg.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center center;
+    opacity: 0.1; /* 這裡調整透明度，0~1之間 */
+    pointer-events: none; /* 不影響點擊 */
+}
+body {
+    position: relative;
+    z-index: 1;
+    /* 移除 body 的 background-image 設定 */
+    background: none;
+}
