@@ -1,11 +1,11 @@
 // local
-// const ORDER_URL_1 = `http://localhost:8081`;
-// const ORDER_URL_2 = `http://localhost:8082`;
-// const ORDER_URL_3 = `http://localhost:8083`;
+const ORDER_URL_1 = `http://localhost:8081`;
+const ORDER_URL_2 = `http://localhost:8082`;
+const ORDER_URL_3 = `http://localhost:8083`;
 // production
-const ORDER_URL_1 = `http://3.147.58.62:8081`;
-const ORDER_URL_2 = `http://3.15.149.110:8082`;
-const ORDER_URL_3 = `http://52.15.151.104:8083`;
+// const ORDER_URL_1 = `http://3.147.58.62:8081`;
+// const ORDER_URL_2 = `http://3.15.149.110:8082`;
+// const ORDER_URL_3 = `http://52.15.151.104:8083`;
 const ORDER_PAGE_SIZE = 20;
 let ordersData = [];
 let ordersCurrentPage = 1;
@@ -208,22 +208,71 @@ function renderOrdersPagination(filteredOrders = null) {
         e.preventDefault();
         if (ordersCurrentPage > 1) {
             ordersCurrentPage--;
-            renderOrdersTable();
+            renderOrdersTable(data);
+            renderOrdersPagination(data);
         }
     };
     pagination.appendChild(prevLi);
 
-    // 頁碼
-    for (let i = 1; i <= totalPages; i++) {
-        const li = document.createElement("li");
-        li.className = "page-item" + (i === ordersCurrentPage ? " active" : "");
-        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-        li.onclick = (e) => {
-            e.preventDefault();
-            ordersCurrentPage = i;
-            renderOrdersTable();
-        };
-        pagination.appendChild(li);
+    // 頁碼顯示邏輯
+    // 若總頁數 <= 5，全部顯示
+    // 若總頁數 > 5，顯示 3 個開頭、3 個結尾，中間用 "..."，點擊時動態調整
+    if (totalPages <= 5) {
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement("li");
+            li.className = "page-item" + (i === ordersCurrentPage ? " active" : "");
+            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+            li.onclick = (e) => {
+                e.preventDefault();
+                ordersCurrentPage = i;
+                renderOrdersTable(data);
+                renderOrdersPagination(data);
+            };
+            pagination.appendChild(li);
+        }
+    } else {
+        let pages = [];
+        if (ordersCurrentPage <= 3) {
+            pages = [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+        } else if (ordersCurrentPage >= totalPages - 2) {
+            pages = [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+            // 讓 active 在最後三頁時顯示正確
+            if (ordersCurrentPage === totalPages - 2) pages = [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            if (ordersCurrentPage === totalPages - 1) pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            if (ordersCurrentPage === totalPages) pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+        } else {
+            pages = [ordersCurrentPage - 1, ordersCurrentPage, ordersCurrentPage + 1, "...", totalPages - 2, totalPages - 1, totalPages];
+            if (ordersCurrentPage > 3) pages.unshift(1, "...");
+        }
+
+        // 過濾重複與非法頁碼
+        let seen = new Set();
+        pages = pages.filter(p => {
+            if (p === "...") return true;
+            if (p < 1 || p > totalPages || seen.has(p)) return false;
+            seen.add(p);
+            return true;
+        });
+
+        pages.forEach(p => {
+            if (p === "...") {
+                const li = document.createElement("li");
+                li.className = "page-item disabled";
+                li.innerHTML = `<span class="page-link">...</span>`;
+                pagination.appendChild(li);
+            } else {
+                const li = document.createElement("li");
+                li.className = "page-item" + (p === ordersCurrentPage ? " active" : "");
+                li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
+                li.onclick = (e) => {
+                    e.preventDefault();
+                    ordersCurrentPage = p;
+                    renderOrdersTable(data);
+                    renderOrdersPagination(data);
+                };
+                pagination.appendChild(li);
+            }
+        });
     }
 
     // 下一頁
@@ -234,7 +283,8 @@ function renderOrdersPagination(filteredOrders = null) {
         e.preventDefault();
         if (ordersCurrentPage < totalPages) {
             ordersCurrentPage++;
-            renderOrdersTable();
+            renderOrdersTable(data);
+            renderOrdersPagination(data);
         }
     };
     pagination.appendChild(nextLi);

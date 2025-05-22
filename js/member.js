@@ -149,18 +149,62 @@ function renderPagination() {
     };
     pagination.appendChild(prevLi);
 
-    // 頁碼
-    for (let i = 1; i <= totalPages; i++) {
-        const li = document.createElement("li");
-        li.className = "page-item" + (i === currentPage ? " active" : "");
-        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-        li.onclick = (e) => {
-            e.preventDefault();
-            currentPage = i;
-            renderTable();
-            renderPagination();
-        };
-        pagination.appendChild(li);
+    // 頁碼顯示邏輯
+    if (totalPages <= 5) {
+        for (let i = 1; i <= totalPages; i++) {
+            const li = document.createElement("li");
+            li.className = "page-item" + (i === currentPage ? " active" : "");
+            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+            li.onclick = (e) => {
+                e.preventDefault();
+                currentPage = i;
+                renderTable();
+                renderPagination();
+            };
+            pagination.appendChild(li);
+        }
+    } else {
+        let pages = [];
+        if (currentPage <= 3) {
+            pages = [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+        } else if (currentPage >= totalPages - 2) {
+            pages = [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+            if (currentPage === totalPages - 2) pages = [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            if (currentPage === totalPages - 1) pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            if (currentPage === totalPages) pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+        } else {
+            pages = [currentPage - 1, currentPage, currentPage + 1, "...", totalPages - 2, totalPages - 1, totalPages];
+            if (currentPage > 3) pages.unshift(1, "...");
+        }
+
+        // 過濾重複與非法頁碼
+        let seen = new Set();
+        pages = pages.filter(p => {
+            if (p === "...") return true;
+            if (p < 1 || p > totalPages || seen.has(p)) return false;
+            seen.add(p);
+            return true;
+        });
+
+        pages.forEach(p => {
+            if (p === "...") {
+                const li = document.createElement("li");
+                li.className = "page-item disabled";
+                li.innerHTML = `<span class="page-link">...</span>`;
+                pagination.appendChild(li);
+            } else {
+                const li = document.createElement("li");
+                li.className = "page-item" + (p === currentPage ? " active" : "");
+                li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
+                li.onclick = (e) => {
+                    e.preventDefault();
+                    currentPage = p;
+                    renderTable();
+                    renderPagination();
+                };
+                pagination.appendChild(li);
+            }
+        });
     }
 
     // 下一頁
