@@ -1,5 +1,11 @@
-// const ORDER_API_URL = "http://localhost:8080";
-const ORDER_API_URL = "http://3.147.58.62:8081";
+// local
+// const ORDER_URL_1 = `http://localhost:8081`;
+// const ORDER_URL_2 = `http://localhost:8082`;
+// const ORDER_URL_3 = `http://localhost:8083`;
+// production
+const ORDER_URL_1 = `http://3.147.58.62:8081`;
+const ORDER_URL_2 = `http://3.15.149.110:8082`;
+const ORDER_URL_3 = `http://52.15.151.104:8083`;
 const ORDER_PAGE_SIZE = 20;
 let ordersData = [];
 let ordersCurrentPage = 1;
@@ -17,9 +23,9 @@ function getTodayStr() {
 }
 
 // 取得訂單資料
-async function fetchOrders(startDate = "2023-01-01", endDate = getTodayStr()) {
+async function fetchOrders(startDate = "2023-01-01", endDate = '2025-12-31') {
     try {
-        const url = `${ORDER_API_URL}/order/findRange?startDate=${startDate}&endDate=${endDate}`;
+        const url = `${ORDER_URL_1}/order/findRange?startDate=${startDate}&endDate=${endDate}`;
         const response = await fetch(url);
         const result = await response.json();
         if (result.code === "0000") {
@@ -91,6 +97,15 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
         </tr>
     `).join('');
 
+    // 新增總筆數 row
+    const totalRow = document.createElement("tr");
+    totalRow.innerHTML = `
+        <td colspan="5" class="text-start text-secondary">
+            Total: ${filteredOrders.length} orders
+        </td>
+    `;
+    tbody.appendChild(totalRow);
+
     // 綁定 Order ID 點擊事件
     Array.from(tbody.querySelectorAll('.order-id-link')).forEach(link => {
         link.addEventListener('click', async function(e) {
@@ -114,7 +129,7 @@ async function showOrderHistoryModal(orderId, createTime) {
     const dateOnly = createTime ? createTime.substring(0, 10) : "";
 
     try {
-        const resp = await fetch(`${ORDER_API_URL}/order/history?orderId=${encodeURIComponent(orderId)}&createTime=${encodeURIComponent(dateOnly)}`);
+        const resp = await fetch(`${ORDER_URL_1}/order/history?orderId=${encodeURIComponent(orderId)}&createTime=${encodeURIComponent(dateOnly)}`);
         const result = await resp.json();
         if (result.code === "0000" && Array.isArray(result.data) && result.data.length > 0) {
             body.innerHTML = `
@@ -239,8 +254,8 @@ function deleteOrder(orderId, version) {
     if (!confirm(`Are you sure you want to delete order ${orderId} ?`)) {
         return;
     }
-    fetch(`${ORDER_API_URL}/order/delete`, {
-        method: "DELETE",
+    fetch(`${ORDER_URL_1}/order/delete`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order)
     })
@@ -281,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             try {
-                const resp = await fetch(`${ORDER_API_URL}/order/update`, {
+                const resp = await fetch(`${ORDER_URL_1}/order/update`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(updatedOrder)
@@ -393,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const createTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
 
             try {
-                const resp = await fetch(`${ORDER_API_URL}/order/save`, {
+                const resp = await fetch(`${ORDER_URL_1}/order/save`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
