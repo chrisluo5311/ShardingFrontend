@@ -62,9 +62,6 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
             o.id.orderId && o.id.orderId.toLowerCase().includes(orderSearchKeyword.toLowerCase())
         );
     }
-    if (orderServerFilter !== "All") {
-        filteredOrders = filteredOrders.filter(o => o.server === orderServerFilter);
-    }
 
     // 分頁
     const start = (ordersCurrentPage - 1) * ORDER_PAGE_SIZE;
