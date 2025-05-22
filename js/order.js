@@ -349,23 +349,122 @@ document.addEventListener("DOMContentLoaded", () => {
         setOrderFilterBtnStyle();
         renderOrdersTable();
     };
-    document.getElementById("orderFilterServer1").onclick = function () {
+    document.getElementById("orderFilterServer1").onclick = async function () {
         orderServerFilter = "Server 1";
         ordersCurrentPage = 1;
         setOrderFilterBtnStyle();
-        renderOrdersTable();
+
+        // 顯示 loading spinner
+        const tbody = document.querySelector("#orders-table tbody");
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">
+                        <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
+            const resp = await fetch(`${ORDER_URL_1}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const result = await resp.json();
+            if (Array.isArray(result)) {
+                const sorted = result.sort((a, b) => {
+                    const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+                    const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+                    return tb - ta;
+                });
+                renderOrdersTable(sorted);
+                renderOrdersPagination(sorted);
+            } else {
+                renderOrdersTable([], "API Error: Unexpected response format");
+                renderOrdersPagination([]);
+            }
+        } catch (error) {
+            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersPagination([]);
+        }
     };
-    document.getElementById("orderFilterServer2").onclick = function () {
+    document.getElementById("orderFilterServer2").onclick = async function () {
         orderServerFilter = "Server 2";
         ordersCurrentPage = 1;
         setOrderFilterBtnStyle();
-        renderOrdersTable();
+
+        // 顯示 loading spinner
+        const tbody = document.querySelector("#orders-table tbody");
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">
+                        <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
+            const resp = await fetch(`${ORDER_URL_2}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const result = await resp.json();
+            if (Array.isArray(result)) {
+                const sorted = result.sort((a, b) => {
+                    const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+                    const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+                    return tb - ta;
+                });
+                renderOrdersTable(sorted);
+                renderOrdersPagination(sorted);
+            } else {
+                renderOrdersTable([], "API Error: Unexpected response format");
+                renderOrdersPagination([]);
+            }
+        } catch (error) {
+            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersPagination([]);
+        }
     };
-    document.getElementById("orderFilterServer3").onclick = function () {
+    document.getElementById("orderFilterServer3").onclick = async function () {
         orderServerFilter = "Server 3";
         ordersCurrentPage = 1;
         setOrderFilterBtnStyle();
-        renderOrdersTable();
+
+        // 顯示 loading spinner
+        const tbody = document.querySelector("#orders-table tbody");
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">
+                        <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
+            const resp = await fetch(`${ORDER_URL_3}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const result = await resp.json();
+            if (Array.isArray(result)) {
+                const sorted = result.sort((a, b) => {
+                    const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+                    const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+                    return tb - ta;
+                });
+                renderOrdersTable(sorted);
+                renderOrdersPagination(sorted);
+            } else {
+                renderOrdersTable([], "API Error: Unexpected response format");
+                renderOrdersPagination([]);
+            }
+        } catch (error) {
+            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersPagination([]);
+        }
     };
 
     // 設定按鈕樣式
