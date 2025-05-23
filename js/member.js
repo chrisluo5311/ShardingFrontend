@@ -119,7 +119,7 @@ function deleteMember(id) {
     .then(result => {
         if (result.code === "0000") {
             alert("User deleted successfully");
-            fetchMembers(); // 重新載入會員資料
+            location.reload(); // 重新載入會員資料
         } else {
             alert("Delete Failed: " + result.message);
         }
