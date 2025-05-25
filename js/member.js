@@ -35,10 +35,14 @@ async function fetchMembers() {
 function renderTable() {
     const tbody = document.querySelector("#members-table tbody");
     tbody.innerHTML = "";
-    // 過濾會員名稱
+    // 過濾會員名稱與ID
     let filteredMembers = members;
     if (searchKeyword.trim() !== "") {
-        filteredMembers = members.filter(m => m.name && m.name.toLowerCase().includes(searchKeyword.toLowerCase()));
+        const keyword = searchKeyword.trim().toLowerCase();
+        filteredMembers = members.filter(m =>
+            (m.name && m.name.toLowerCase().includes(keyword)) ||
+            (m.id && m.id.toLowerCase().includes(keyword))
+        );
     }
     const start = (currentPage - 1) * PAGE_SIZE;
     const end = start + PAGE_SIZE;
@@ -47,7 +51,12 @@ function renderTable() {
     for (const member of pageMembers) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td>${member.id}</td>
+            <td>
+                ${member.id}
+                <button class="btn btn-sm btn-outline-secondary ms-1 copy-member-id-btn" data-id="${member.id}" title="Copy ID" style="padding:2px 6px;">
+                    <i class="bi bi-clipboard" style="font-size:0.9em;"></i>
+                </button>
+            </td>
             <td>${member.name}</td>
             <td>
                 <button class="btn btn-sm btn-primary me-1" onclick="editMember('${member.id}')">Edit</button>
@@ -55,6 +64,49 @@ function renderTable() {
             </td>
         `;
         tbody.appendChild(tr);
+    }
+
+    // 綁定 copy 按鈕事件
+    setTimeout(() => {
+        document.querySelectorAll('.copy-member-id-btn').forEach(btn => {
+            btn.onclick = function() {
+                const id = this.getAttribute('data-id');
+                navigator.clipboard.writeText(id);
+                this.title = "Copied!";
+                setTimeout(() => { this.title = "Copy ID"; }, 1000);
+
+                // 顯示 Bootstrap Toasts
+                showCopyToast("Copy successfully");
+            };
+        });
+    }, 0);
+
+    // Toast 顯示函式
+    function showCopyToast(msg) {
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.top = '20px';
+            toastContainer.style.right = '20px';
+            toastContainer.style.zIndex = 9999;
+            document.body.appendChild(toastContainer);
+        }
+        const toastId = 'toast-' + Date.now();
+        toastContainer.insertAdjacentHTML('beforeend', `
+            <div id="${toastId}" class="toast align-items-center text-bg-success border-0 show" role="alert" aria-live="assertive" aria-atomic="true" style="min-width:120px;margin-bottom:8px;">
+                <div class="d-flex">
+                    <div class="toast-body">${msg}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `);
+        const toastEl = document.getElementById(toastId);
+        setTimeout(() => {
+            if (toastEl) toastEl.classList.remove('show');
+            setTimeout(() => { if (toastEl) toastEl.remove(); }, 500);
+        }, 1200);
     }
 
     // 顯示總會員數
