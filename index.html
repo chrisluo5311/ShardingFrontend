@@ -6,6 +6,7 @@
     <title>ShardingJH</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
     <div class="bg-overlay"></div>
@@ -41,7 +42,7 @@
                             <button type="button" class="btn btn-secondary" id="filterServer2">Server 2</button>
                             <button type="button" class="btn btn-secondary" id="filterServer3">Server 3</button>
                             <button type="button" class="btn btn-success ms-auto" id="newMemberBtn">New Member</button>
-                            <input type="text" class="form-control ms-2" id="searchMemberInput" placeholder="Search by name" style="max-width: 200px;">
+                            <input type="text" class="form-control ms-2" id="searchMemberInput" placeholder="Search by name and id" style="max-width: 200px;">
                         </div>
                         <!-- 原本的 table -->
                         <table class="table table-striped table-bordered table-hover" id="members-table">
@@ -179,6 +180,23 @@
                 </select>
               </div>
               <div class="mb-2">
+                <label class="form-label">Price</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <button type="button" class="btn btn-outline-secondary" id="editOrderPriceMinus">-10</button>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="editOrderPrice"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    required
+                  >
+                  <button type="button" class="btn btn-outline-secondary" id="editOrderPricePlus">+10</button>
+                </div>
+              </div>
+              <div class="mb-2">
                 <label class="form-label">Is Deleted</label>
                 <input type="text" class="form-control" id="editOrderIsDeleted" readonly>
               </div>
@@ -209,6 +227,21 @@
               <div class="mb-3">
                 <label for="newOrderMemberId" class="form-label">Member ID</label>
                 <input type="text" class="form-control" id="newOrderMemberId" required>
+              </div>
+              <div class="mb-3">
+                <label for="newOrderPrice" class="form-label">Price</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="newOrderPrice"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    required
+                  >
+                </div>
               </div>
             </div>
             <div class="modal-footer justify-content-end">
