@@ -87,6 +87,7 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
             <td>${order.memberId}</td>
             <td>${order.createTime ? order.createTime.replace('T', ' ') : ''}</td>
             <td class="text-center">${order.isPaid ? "✅" : "❌"}</td>
+            <td>$${order.price}</td>
             <td>
                 <button class="btn btn-sm btn-primary me-1" onclick="editOrder('${order.id.orderId}', ${order.id.version})">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteOrder('${order.id.orderId}', ${order.id.version})">Delete</button>
@@ -136,6 +137,7 @@ async function showOrderHistoryModal(orderId, createTime) {
                             <th>Version</th>
                             <th>Create Time</th>
                             <th>Is Paid</th>
+                            <th>Price</th>
                             <th>Member ID</th>
                             <th>Expired At</th>
                             <th>Is Deleted</th>
@@ -147,6 +149,7 @@ async function showOrderHistoryModal(orderId, createTime) {
                                 <td>${order.id.version}</td>
                                 <td>${order.createTime ? order.createTime.replace('T', ' ') : ''}</td>
                                 <td>${order.isPaid ? "Yes" : "No"}</td>
+                                <td>$${order.price}</td>
                                 <td>${order.memberId}</td>
                                 <td>
                                     ${order.expiredAt
@@ -187,6 +190,27 @@ function editOrder(orderId, version) {
     document.getElementById("editOrderCreateTime").value = order.createTime ? order.createTime.replace('T', ' ') : '';
     document.getElementById("editOrderIsPaid").value = order.isPaid;
     document.getElementById("editOrderIsDeleted").value = order.isDeleted;
+    document.getElementById("editOrderPrice").value = order.price || 1;
+
+    // 綁定價格增減按鈕事件
+    const priceInput = document.getElementById("editOrderPrice");
+    const minusBtn = document.getElementById("editOrderPriceMinus");
+    const plusBtn = document.getElementById("editOrderPricePlus");
+
+    // 先移除舊的事件（避免重複綁定）
+    minusBtn.onclick = null;
+    plusBtn.onclick = null;
+
+    minusBtn.onclick = function() {
+        let value = parseInt(priceInput.value) || 1;
+        value = Math.max(1, value - 10);
+        priceInput.value = value;
+    };
+    plusBtn.onclick = function() {
+        let value = parseInt(priceInput.value) || 1;
+        value = Math.min(1000, value + 10);
+        priceInput.value = value;
+    };
 
     // 顯示 modal
     const modal = new bootstrap.Modal(document.getElementById('editOrderModal'));
@@ -339,7 +363,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 isPaid: parseInt(document.getElementById("editOrderIsPaid").value, 10),
                 memberId: editingOrder.memberId,
                 expiredAt: editingOrder.expiredAt,
-                isDeleted: editingOrder.isDeleted
+                isDeleted: editingOrder.isDeleted,
+                price: parseInt(document.getElementById("editOrderPrice").value, 10) // 新增 price 欄位
             };
 
             try {
@@ -539,8 +564,13 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const isPaid = document.getElementById("newOrderIsPaid").checked ? 1 : 0;
             const memberId = document.getElementById("newOrderMemberId").value.trim();
+            const price = parseInt(document.getElementById("newOrderPrice").value, 10); // 取得 price 欄位
             if (!memberId) {
                 alert("Please enter member ID.");
+                return;
+            }
+            if (isNaN(price) || price < 1 || price > 1000) {
+                alert("Price 必須介於 1~1000 之間");
                 return;
             }
             // 取得本地現在時間（yyyy-MM-ddTHH:mm:ss）
@@ -552,6 +582,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             const createTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+            console.log("createTime:", createTime);
+            console.log("New Order:", JSON.stringify({
+                        createTime,
+                        isPaid,
+                        memberId,
+                        price // 新增 price 欄位
+                    }))
 
             try {
                 const resp = await fetch(`${ORDER_URL_1}/order/save`, {
@@ -560,7 +597,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     body: JSON.stringify({
                         createTime,
                         isPaid,
-                        memberId
+                        memberId,
+                        price // 新增 price 欄位
                     })
                 });
                 const result = await resp.json();
@@ -573,6 +611,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <div><strong>Member ID:</strong> ${order.memberId}</div>
                         <div><strong>Create Time:</strong> ${order.createTime ? order.createTime.replace('T', ' ') : ''}</div>
                         <div><strong>Is Paid:</strong> ${order.isPaid ? "Yes" : "No"}</div>
+                        <div><strong>Price:</strong> ${order.price}</div>
                     `;
                     // 等 newOrderModal 關閉後再開 orderCreatedModal
                     document.getElementById('newOrderModal').addEventListener('hidden.bs.modal', function handler() {
