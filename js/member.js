@@ -85,12 +85,23 @@ function renderTable() {
         document.querySelectorAll('.copy-member-id-btn').forEach(btn => {
             btn.onclick = function() {
                 const id = this.getAttribute('data-id');
-                navigator.clipboard.writeText(id);
+                // 直接用舊的方式複製
+                const textarea = document.createElement("textarea");
+                textarea.value = id;
+                textarea.style.position = "fixed";
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopyToast("Copy successfully");
+                } catch (err) {
+                    alert("Copy failed");
+                }
+                document.body.removeChild(textarea);
+
                 this.title = "Copied!";
                 setTimeout(() => { this.title = "Copy ID"; }, 1000);
-
-                // 顯示 Bootstrap Toasts
-                showCopyToast("Copy successfully");
             };
         });
     }, 0);
