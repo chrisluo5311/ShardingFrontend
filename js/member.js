@@ -15,19 +15,33 @@ let searchKeyword = "";
 
 // 取得會員資料
 async function fetchMembers() {
-    try {
-        const FETCH_MEMBER_URL = API_URL_1 + "/user/getAll";
-        const response = await fetch(FETCH_MEMBER_URL);
-        const result = await response.json();
-        if (result.code === "0000") {
-            members = result.data || [];
-            renderTable();
-            renderPagination();
-        } else {
-            showError("API Error: " + result.message);
-        }   
-    } catch (error) {
-        showError("Can't fetch member data: " + error);
+    const urls = [
+        `${API_URL_1}/user/getAll`,
+        `${API_URL_2}/user/getAll`,
+        `${API_URL_3}/user/getAll`
+    ];
+    let lastError = null;
+    for (let i = 0; i < urls.length; i++) {
+        try {
+            const response = await fetch(urls[i]);
+            const result = await response.json();
+            if (result.code === "0000") {
+                members = result.data || [];
+                renderTable();
+                renderPagination();
+                return;
+            } else {
+                showError("API Error: " + result.message);
+                return;
+            }
+        } catch (error) {
+            lastError = error;
+            // 如果是最後一個才顯示錯誤
+            if (i === urls.length - 1) {
+                showError("All servers are repairing, try again later");
+            }
+            // 否則繼續嘗試下一個 URL
+        }
     }
 }
 
@@ -277,7 +291,7 @@ function renderPagination() {
 // 顯示錯誤訊息
 function showError(msg) {
     const tbody = document.querySelector("#members-table tbody");
-    tbody.innerHTML = `<tr><td colspan="2" class="text-danger">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="2" class="text-primary">${msg}</td></tr>`;
 }
 
 /**
@@ -402,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     showError("API Error: Unexpected response format");
                 }
             } catch (error) {
-                showError("Can't fetch member data: " + error);
+                showError("Server is recovering, please try again later.");
             }
         });
     }
@@ -425,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     showError("API Error: Unexpected response format");
                 }
             } catch (error) {
-                showError("Can't fetch member data: " + error);
+                showError("Server is recovering, please try again later.");
             }
         });
     }
@@ -448,8 +462,63 @@ document.addEventListener("DOMContentLoaded", () => {
                     showError("API Error: Unexpected response format");
                 }
             } catch (error) {
-                showError("Can't fetch member data: " + error);
+                showError("Server is recovering, please try again later.");
             }
         });
     }
+
+    // 綁定 Update Background Image 按鈕事件
+    const updateBgBtn = document.getElementById("updateBgBtn");
+    const updateBgModal = new bootstrap.Modal(document.getElementById("updateBgModal"));
+    if (updateBgBtn) {
+        updateBgBtn.onclick = () => {
+            document.getElementById("updateBgForm").reset();
+            document.getElementById("bgUploadError").textContent = "";
+            updateBgModal.show();
+        };
+    }
+
+    // 處理背景圖片上傳
+    document.getElementById("updateBgForm").onsubmit = async function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById("bgImageFile");
+        const errorDiv = document.getElementById("bgUploadError");
+        const serverSelect = document.getElementById("bgServerSelect");
+        errorDiv.textContent = "";
+
+        const file = fileInput.files[0];
+        if (!file) {
+            errorDiv.textContent = "Please select a file";
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            errorDiv.textContent = "File size limit 10MB";
+            return;
+        }
+
+        // 根據下拉選單選擇 API URL
+        let uploadUrl = "";
+        if (serverSelect.value === "1") uploadUrl = `${API_URL_1}/static/upload`;
+        else if (serverSelect.value === "2") uploadUrl = `${API_URL_2}/static/upload`;
+        else if (serverSelect.value === "3") uploadUrl = `${API_URL_3}/static/upload`;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const resp = await fetch(uploadUrl, {
+                method: "POST",
+                body: formData
+            });
+            if (resp.ok) {
+                updateBgModal.hide();
+                alert("Background image uploaded successfully!");
+                // 可在此處理背景圖片更新邏輯
+            } else {
+                errorDiv.textContent = "Upload failed, please try again";
+            }
+        } catch (err) {
+            errorDiv.textContent = "Upload failed: " + err;
+        }
+    };
 });

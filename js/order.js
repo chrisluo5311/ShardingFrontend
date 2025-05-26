@@ -24,29 +24,43 @@ function getTodayStr() {
 
 // 取得訂單資料
 async function fetchOrders(startDate = "2023-01-01", endDate = '2025-12-31') {
-    try {
-        const url = `${ORDER_URL_1}/order/findRange?startDate=${startDate}&endDate=${endDate}`;
-        const response = await fetch(url);
-        const result = await response.json();
-        if (result.code === "0000") {
-            // 依 createTime 由新到舊排序
-            ordersData = (result.data || []).sort((a, b) => {
-                const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
-                const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
-                return tb - ta;
-            });
-            ordersCurrentPage = 1;
-            renderOrdersTable();
-            renderOrdersPagination();
-        } else {
-            ordersData = [];
-            renderOrdersTable([], "API Error: " + result.message);
-            renderOrdersPagination();
+    const urls = [
+        `${ORDER_URL_1}/order/findRange?startDate=${startDate}&endDate=${endDate}`,
+        `${ORDER_URL_2}/order/findRange?startDate=${startDate}&endDate=${endDate}`,
+        `${ORDER_URL_3}/order/findRange?startDate=${startDate}&endDate=${endDate}`
+    ];
+    let lastError = null;
+    for (let i = 0; i < urls.length; i++) {
+        try {
+            const response = await fetch(urls[i]);
+            const result = await response.json();
+            if (result.code === "0000") {
+                // 依 createTime 由新到舊排序
+                ordersData = (result.data || []).sort((a, b) => {
+                    const ta = a.createTime ? new Date(a.createTime).getTime() : 0;
+                    const tb = b.createTime ? new Date(b.createTime).getTime() : 0;
+                    return tb - ta;
+                });
+                ordersCurrentPage = 1;
+                renderOrdersTable();
+                renderOrdersPagination();
+                return;
+            } else {
+                ordersData = [];
+                renderOrdersTable([], "API Error: " + result.message);
+                renderOrdersPagination();
+                return;
+            }
+        } catch (error) {
+            lastError = error;
+            // 如果是最後一個才顯示錯誤
+            if (i === urls.length - 1) {
+                ordersData = [];
+                renderOrdersTable([], "All servers are down, please try again later.");
+                renderOrdersPagination();
+            }
+            // 否則繼續嘗試下一個 URL
         }
-    } catch (error) {
-        ordersData = [];
-        renderOrdersTable([], "Can't fetch order data: " + error);
-        renderOrdersPagination();
     }
 }
 
@@ -70,7 +84,7 @@ function renderOrdersTable(orders = ordersData, errorMsg = "") {
 
     // 渲染 tbody
     if (errorMsg) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-danger">${errorMsg}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-primary">${errorMsg}</td></tr>`;
         return;
     }
     if (!pageOrders.length) {
@@ -419,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
         orderServerFilter = "All";
         ordersCurrentPage = 1;
         setOrderFilterBtnStyle();
-        renderOrdersTable();
+        fetchOrders(); // 重新取得所有 server 的訂單
     };
     document.getElementById("orderFilterServer1").onclick = async function () {
         orderServerFilter = "Server 1";
@@ -456,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderOrdersPagination([]);
             }
         } catch (error) {
-            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersTable([], "Server is recovering, please try again later.");
             renderOrdersPagination([]);
         }
     };
@@ -495,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderOrdersPagination([]);
             }
         } catch (error) {
-            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersTable([], "Server is recovering, please try again later.");
             renderOrdersPagination([]);
         }
     };
@@ -534,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderOrdersPagination([]);
             }
         } catch (error) {
-            renderOrdersTable([], "Can't fetch order data: " + error);
+            renderOrdersTable([], "Server is recovering, please try again later.");
             renderOrdersPagination([]);
         }
     };

@@ -210,6 +210,11 @@
       </div>
     </div>
 
+    <button id="updateBgBtn" type="button" class="btn btn-primary rounded-circle"
+    style="position:fixed;bottom:32px;right:32px;z-index:1050;width:56px;height:56px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+        <i class="bi bi-image" style="font-size:1.5rem;"></i>
+    </button>
+
     <!-- 新增 New Order Modal -->
     <div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -286,6 +291,37 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Update Background Image Modal -->
+    <div class="modal fade" id="updateBgModal" tabindex="-1" aria-labelledby="updateBgModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form id="updateBgForm" class="modal-content" enctype="multipart/form-data">
+          <div class="modal-header">
+            <h5 class="modal-title" id="updateBgModalLabel">Upload Background Image</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="bgServerSelect" class="form-label">Select Server</label>
+              <select class="form-select" id="bgServerSelect" required>
+                <option value="1" selected>Server 1</option>
+                <option value="2">Server 2</option>
+                <option value="3">Server 3</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <input type="file" class="form-control" id="bgImageFile" name="file" accept="image/*" required>
+              <div class="form-text">File size limit 10MB</div>
+            </div>
+            <div id="bgUploadError" class="text-danger small"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Upload</button>
+          </div>
+        </form>
       </div>
     </div>
 
