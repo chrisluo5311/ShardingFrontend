@@ -63,13 +63,13 @@ h1, h2, h3, h4, h5, h6 {
     width: 100vw;
     height: 100vh;
     z-index: 0;
-    background-image: url('http://3.147.58.62:8081/static/lookup?fileName=bg.jpg');
+    /* background-image 由 JS 動態設定 */
     background-size: cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-position: center center;
-    opacity: 0.1; /* 這裡調整透明度，0~1之間 */
-    pointer-events: none; /* 不影響點擊 */
+    opacity: 0.1;
+    pointer-events: none;
 }
 body {
     position: relative;
