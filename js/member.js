@@ -3,7 +3,7 @@
 // const API_URL_2 = `http://localhost:8082`;
 // const API_URL_3 = `http://localhost:8083`;
 // production
-const API_URL_1 = `http://3.147.58.62:8081`;
+const API_URL_1 = `http://18.222.111.89:8081`;
 const API_URL_2 = `http://3.15.149.110:8082`;
 const API_URL_3 = `http://52.15.151.104:8083`;
 
@@ -308,7 +308,7 @@ function showError(msg) {
 /**
  * 顯示新增會員的 Bootstrap Modal，並處理送出事件
  */
-function showNewMemberModal() {
+async function showNewMemberModal() {
     const newMemberModalEl = document.getElementById('newMemberModal');
     const newMemberModal = new bootstrap.Modal(newMemberModalEl);
     const newMemberForm = document.getElementById("newMemberForm");
@@ -325,22 +325,43 @@ function showNewMemberModal() {
             alert("Please enter a name.");
             return;
         }
-        try {
-            const resp = await fetch(`${API_URL_1}/user/save`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name })
-            });
-            const result = await resp.json();
-            if (result.code === "0000") {
-                alert("Member created successfully!");
-                newMemberModal.hide();
-                fetchMembers();
-            } else {
-                alert("Create failed: " + result.message);
+
+        // 依序嘗試三個 API
+        const urls = [
+            `${API_URL_1}/user/save`,
+            `${API_URL_2}/user/save`,
+            `${API_URL_3}/user/save`
+        ];
+        let success = false;
+        let lastError = null;
+        for (let i = 0; i < urls.length; i++) {
+            try {
+                const resp = await fetch(urls[i], {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name })
+                });
+                const result = await resp.json();
+                if (result.code === "0000") {
+                    alert("Member created successfully!");
+                    newMemberModal.hide();
+                    fetchMembers();
+                    success = true;
+                    break;
+                } else {
+                    lastError = result.message;
+                }
+            } catch (err) {
+                lastError = err;
+                // 如果是最後一個才顯示錯誤
+                if (i === urls.length - 1) {
+                    alert("Create failed: " + lastError);
+                }
+                // 否則繼續嘗試下一個 URL
             }
-        } catch (err) {
-            alert("Create failed: " + err);
+        }
+        if (!success && lastError) {
+            alert("Create failed: " + lastError);
         }
     };
 

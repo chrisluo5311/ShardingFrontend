@@ -1,5 +1,5 @@
 const bgUrls = [
-    "http://3.147.58.62:8081/static/lookup?fileName=bg.jpg",
+    "http://18.222.111.89:8081/static/lookup?fileName=bg.jpg",
     "http://3.15.149.110:8082/static/lookup?fileName=bg.jpg",
     "http://52.15.151.104:8083/static/lookup?fileName=bg.jpg"
 ];
