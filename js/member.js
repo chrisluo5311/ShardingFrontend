@@ -1,15 +1,3 @@
-function canonicalStringify(obj) {
-    if (Array.isArray(obj)) {
-        return '[' + obj.map(canonicalStringify).join(',') + ']';
-    } else if (obj !== null && typeof obj === 'object') {
-        return '{' + Object.keys(obj).sort().map(key =>
-            JSON.stringify(key) + ':' + canonicalStringify(obj[key])
-        ).join(',') + '}';
-    } else {
-        return JSON.stringify(obj);
-    }
-}
-
 // local
 // const API_URL_1 = `http://localhost:8081`;
 // const API_URL_2 = `http://localhost:8082`;
@@ -25,6 +13,29 @@ const PAGE_SIZE = 20;
 let members = [];
 let currentPage = 1;
 let searchKeyword = "";
+
+function canonicalStringify(obj) {
+    if (Array.isArray(obj)) {
+        return '[' + obj.map(canonicalStringify).join(',') + ']';
+    } else if (obj !== null && typeof obj === 'object') {
+        return '{' + Object.keys(obj).sort().map(key =>
+            JSON.stringify(key) + ':' + canonicalStringify(obj[key])
+        ).join(',') + '}';
+    } else {
+        return JSON.stringify(obj);
+    }
+}
+
+function getUUID() {
+    if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    // Polyfill for UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
 
 // 取得會員資料
 async function fetchMembers() {
@@ -185,7 +196,7 @@ async function showNewMemberModal() {
             alert("Please enter a name.");
             return;
         }
-        const id = crypto.randomUUID();
+        const id = getUUID();
         const body = { id, name };
         const bodyStr = canonicalStringify(body);
         const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
@@ -614,4 +625,6 @@ document.addEventListener("DOMContentLoaded", () => {
             errorDiv.textContent = "Upload failed: " + err;
         }
     };
+
+    
 });
