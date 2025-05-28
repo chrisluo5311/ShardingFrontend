@@ -19,7 +19,6 @@ const ORDER_URL_1 = `http://18.222.111.89:8081`;
 const ORDER_URL_2 = `http://3.15.149.110:8082`;
 const ORDER_URL_3 = `http://52.15.151.104:8083`;
 
-const secretKey = "myShardingJHSecretKey";
 const ORDER_PAGE_SIZE = 20;
 let ordersData = [];
 let ordersCurrentPage = 1;
