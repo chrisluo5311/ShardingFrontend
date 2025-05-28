@@ -1,4 +1,3 @@
-// 加在檔案最前面或適當位置
 function canonicalStringify(obj) {
     if (Array.isArray(obj)) {
         return '[' + obj.map(canonicalStringify).join(',') + ']';
