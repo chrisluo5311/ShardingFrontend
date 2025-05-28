@@ -1,3 +1,16 @@
+// 加在檔案最前面或適當位置
+function canonicalStringify(obj) {
+    if (Array.isArray(obj)) {
+        return '[' + obj.map(canonicalStringify).join(',') + ']';
+    } else if (obj !== null && typeof obj === 'object') {
+        return '{' + Object.keys(obj).sort().map(key =>
+            JSON.stringify(key) + ':' + canonicalStringify(obj[key])
+        ).join(',') + '}';
+    } else {
+        return JSON.stringify(obj);
+    }
+}
+
 // local
 // const ORDER_URL_1 = `http://localhost:8081`;
 // const ORDER_URL_2 = `http://localhost:8082`;
@@ -6,6 +19,8 @@
 const ORDER_URL_1 = `http://18.222.111.89:8081`;
 const ORDER_URL_2 = `http://3.15.149.110:8082`;
 const ORDER_URL_3 = `http://52.15.151.104:8083`;
+
+const secretKey = "myShardingJHSecretKey";
 const ORDER_PAGE_SIZE = 20;
 let ordersData = [];
 let ordersCurrentPage = 1;
@@ -24,15 +39,29 @@ function getTodayStr() {
 
 // 取得訂單資料
 async function fetchOrders(startDate = "2023-01-01", endDate = '2025-12-31') {
+    const endpoints = [
+        `/order/findRange?startDate=${startDate}&endDate=${endDate}`,
+        `/order/findRange?startDate=${startDate}&endDate=${endDate}`,
+        `/order/findRange?startDate=${startDate}&endDate=${endDate}`
+    ];
     const urls = [
-        `${ORDER_URL_1}/order/findRange?startDate=${startDate}&endDate=${endDate}`,
-        `${ORDER_URL_2}/order/findRange?startDate=${startDate}&endDate=${endDate}`,
-        `${ORDER_URL_3}/order/findRange?startDate=${startDate}&endDate=${endDate}`
+        `${ORDER_URL_1}${endpoints[0]}`,
+        `${ORDER_URL_2}${endpoints[1]}`,
+        `${ORDER_URL_3}${endpoints[2]}`
     ];
     let lastError = null;
     for (let i = 0; i < urls.length; i++) {
         try {
-            const response = await fetch(urls[i]);
+            // 產生 X-Signature
+            const endpoint = endpoints[i];
+            const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
+            const response = await fetch(urls[i], {
+                method: "GET",
+                headers: {
+                    "X-Signature": signature
+                }
+            });
             const result = await response.json();
             if (result.code === "0000") {
                 // 依 createTime 由新到舊排序
@@ -139,9 +168,19 @@ async function showOrderHistoryModal(orderId, createTime) {
 
     // 只保留年月日
     const dateOnly = createTime ? createTime.substring(0, 10) : "";
+    const endpoint = `/order/history?orderId=${encodeURIComponent(orderId)}&createTime=${encodeURIComponent(dateOnly)}`;
+    console.log('endpoint:', endpoint);
+    const url = `${ORDER_URL_1}${endpoint}`;
+    const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+    console.log('signature:', signature);
 
     try {
-        const resp = await fetch(`${ORDER_URL_1}/order/history?orderId=${encodeURIComponent(orderId)}&createTime=${encodeURIComponent(dateOnly)}`);
+        const resp = await fetch(url, {
+            method: "GET",
+            headers: {
+                "X-Signature": signature
+            }
+        });
         const result = await resp.json();
         if (result.code === "0000" && Array.isArray(result.data) && result.data.length > 0) {
             body.innerHTML = `
@@ -339,10 +378,20 @@ function deleteOrder(orderId, version) {
     if (!confirm(`Are you sure you want to delete order ${orderId} ?`)) {
         return;
     }
+
+    // 產生 X-Signature
+    const bodyStr = canonicalStringify(order);
+    console.log('bodyStr:', bodyStr);
+    const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
+    console.log('signature:', signature);
+
     fetch(`${ORDER_URL_1}/order/delete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order)
+        headers: { 
+            "Content-Type": "application/json",
+            "X-Signature": signature
+        },
+        body: bodyStr
     })
     .then(resp => resp.json())
     .then(result => {
@@ -363,11 +412,11 @@ function deleteOrder(orderId, version) {
 document.addEventListener("DOMContentLoaded", () => {
     const editOrderForm = document.getElementById("editOrderForm");
     if (editOrderForm) {
+        // 編輯訂單
         editOrderForm.onsubmit = async function(e) {
             e.preventDefault();
             if (!editingOrder) return;
 
-            // 準備要送出的資料
             const updatedOrder = {
                 id: {
                     orderId: document.getElementById("editOrderId").value,
@@ -378,19 +427,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 memberId: editingOrder.memberId,
                 expiredAt: editingOrder.expiredAt,
                 isDeleted: editingOrder.isDeleted,
-                price: parseInt(document.getElementById("editOrderPrice").value, 10) // 新增 price 欄位
+                price: parseInt(document.getElementById("editOrderPrice").value, 10)
             };
+
+            const bodyStr = canonicalStringify(updatedOrder);
+            const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
+            console.log('bodyStr:', bodyStr);
+            console.log('signature:', signature);
 
             try {
                 const resp = await fetch(`${ORDER_URL_1}/order/update`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-Signature": signature
+                    },
                     body: JSON.stringify(updatedOrder)
                 });
                 const result = await resp.json();
                 if (result.code === "0000") {
                     alert("Order updated successfully!");
-                    // 讓頁面 reload 後仍停留在 Orders tab
                     localStorage.setItem("activeTab", "chart");
                     window.location.reload();
                 } else {
@@ -454,8 +510,17 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }
 
+        const endpoint = `/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`;
+        const url = `${ORDER_URL_1}${endpoint}`;
+        const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
         try {
-            const resp = await fetch(`${ORDER_URL_1}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const resp = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Signature": signature
+                }
+            });
             const result = await resp.json();
             if (Array.isArray(result)) {
                 const sorted = result.sort((a, b) => {
@@ -493,8 +558,17 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }
 
+        const endpoint = `/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`;
+        const url = `${ORDER_URL_2}${endpoint}`;
+        const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
         try {
-            const resp = await fetch(`${ORDER_URL_2}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const resp = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Signature": signature
+                }
+            });
             const result = await resp.json();
             if (Array.isArray(result)) {
                 const sorted = result.sort((a, b) => {
@@ -532,8 +606,17 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }
 
+        const endpoint = `/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`;
+        const url = `${ORDER_URL_3}${endpoint}`;
+        const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
         try {
-            const resp = await fetch(`${ORDER_URL_3}/order/findRangeLocal?startDate=2023-01-01&endDate=2025-12-31`);
+            const resp = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "X-Signature": signature
+                }
+            });
             const result = await resp.json();
             if (Array.isArray(result)) {
                 const sorted = result.sort((a, b) => {
@@ -573,12 +656,12 @@ document.addEventListener("DOMContentLoaded", () => {
             newOrderModal.show();
         });
 
-        // 綁定表單送出事件
+        // 新增訂單
         document.getElementById("newOrderForm").onsubmit = async function(e) {
             e.preventDefault();
             const isPaid = document.getElementById("newOrderIsPaid").checked ? 1 : 0;
             const memberId = document.getElementById("newOrderMemberId").value.trim();
-            const price = parseInt(document.getElementById("newOrderPrice").value, 10); // 取得 price 欄位
+            const price = parseInt(document.getElementById("newOrderPrice").value, 10);
             if (!memberId) {
                 alert("Please enter member ID.");
                 return;
@@ -596,24 +679,30 @@ document.addEventListener("DOMContentLoaded", () => {
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             const createTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
-            console.log("createTime:", createTime);
-            console.log("New Order:", JSON.stringify({
-                        createTime,
-                        isPaid,
-                        memberId,
-                        price // 新增 price 欄位
-                    }))
+
+            // 產生 orderId
+            const orderId = generateOrderId(createTime, memberId);
+
+            const body = {
+                orderId,
+                createTime,
+                isPaid,
+                memberId,
+                price
+            };
+            const bodyStr = canonicalStringify(body);
+            const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
+            console.log('bodyStr:', bodyStr);
+            console.log('signature:', signature);
 
             try {
                 const resp = await fetch(`${ORDER_URL_1}/order/save`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        createTime,
-                        isPaid,
-                        memberId,
-                        price // 新增 price 欄位
-                    })
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-Signature": signature
+                    },
+                    body: bodyStr
                 });
                 const result = await resp.json();
                 if (result.code === "0000") {
@@ -652,3 +741,10 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 });
+
+function generateOrderId(createTime, memberId) {
+    const prefix = "order";
+    const baseString = prefix + createTime + memberId;
+    // 產生 MD5 雜湊並轉成小寫 16 進位字串
+    return CryptoJS.MD5(baseString).toString(CryptoJS.enc.Hex);
+}

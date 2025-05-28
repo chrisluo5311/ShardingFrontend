@@ -1,3 +1,15 @@
+function canonicalStringify(obj) {
+    if (Array.isArray(obj)) {
+        return '[' + obj.map(canonicalStringify).join(',') + ']';
+    } else if (obj !== null && typeof obj === 'object') {
+        return '{' + Object.keys(obj).sort().map(key =>
+            JSON.stringify(key) + ':' + canonicalStringify(obj[key])
+        ).join(',') + '}';
+    } else {
+        return JSON.stringify(obj);
+    }
+}
+
 // local
 // const API_URL_1 = `http://localhost:8081`;
 // const API_URL_2 = `http://localhost:8082`;
@@ -7,6 +19,7 @@ const API_URL_1 = `http://18.222.111.89:8081`;
 const API_URL_2 = `http://3.15.149.110:8082`;
 const API_URL_3 = `http://52.15.151.104:8083`;
 
+const secretKey = "myShardingJHSecretKey";
 const PAGE_SIZE = 20;
 
 let members = [];
@@ -15,15 +28,27 @@ let searchKeyword = "";
 
 // 取得會員資料
 async function fetchMembers() {
+    const endpoints = [
+        `/user/getAll`,
+        `/user/getAll`,
+        `/user/getAll`
+    ];
     const urls = [
-        `${API_URL_1}/user/getAll`,
-        `${API_URL_2}/user/getAll`,
-        `${API_URL_3}/user/getAll`
+        `${API_URL_1}${endpoints[0]}`,
+        `${API_URL_2}${endpoints[1]}`,
+        `${API_URL_3}${endpoints[2]}`
     ];
     let lastError = null;
     for (let i = 0; i < urls.length; i++) {
         try {
-            const response = await fetch(urls[i]);
+            const endpoint = endpoints[i];
+            const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+            const response = await fetch(urls[i], {
+                method: "GET",
+                headers: {
+                    "X-Signature": signature
+                }
+            });
             const result = await response.json();
             if (result.code === "0000") {
                 members = result.data || [];
@@ -36,11 +61,9 @@ async function fetchMembers() {
             }
         } catch (error) {
             lastError = error;
-            // 如果是最後一個才顯示錯誤
             if (i === urls.length - 1) {
                 showError("All servers are repairing, try again later");
             }
-            // 否則繼續嘗試下一個 URL
         }
     }
 }
@@ -144,8 +167,71 @@ function renderTable() {
     tbody.appendChild(totalTr);
 }
 
-// 預留操作函式
-let editingMember = null;
+// 新增會員
+async function showNewMemberModal() {
+    const newMemberModalEl = document.getElementById('newMemberModal');
+    const newMemberModal = new bootstrap.Modal(newMemberModalEl);
+    const newMemberForm = document.getElementById("newMemberForm");
+    const newMemberNameInput = document.getElementById("newMemberName");
+
+    // 重設表單
+    newMemberForm.reset();
+
+    // 綁定 submit 事件（避免重複綁定，先移除再加）
+    newMemberForm.onsubmit = async function(e) {
+        e.preventDefault();
+        const name = newMemberNameInput.value.trim();
+        if (!name) {
+            alert("Please enter a name.");
+            return;
+        }
+        const id = crypto.randomUUID();
+        const body = { id, name };
+        const bodyStr = canonicalStringify(body);
+        const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
+        const urls = [
+            `${API_URL_1}/user/save`,
+            `${API_URL_2}/user/save`,
+            `${API_URL_3}/user/save`
+        ];
+        let success = false;
+        let lastError = null;
+        for (let i = 0; i < urls.length; i++) {
+            try {
+                const resp = await fetch(urls[i], {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-Signature": signature
+                    },
+                    body: bodyStr
+                });
+                const result = await resp.json();
+                if (result.code === "0000") {
+                    alert("Member created successfully!");
+                    newMemberModal.hide();
+                    fetchMembers();
+                    success = true;
+                    break;
+                } else {
+                    lastError = result.message;
+                }
+            } catch (err) {
+                lastError = err;
+                if (i === urls.length - 1) {
+                    alert("Create failed: " + lastError);
+                }
+            }
+        }
+        if (!success && lastError) {
+            alert("Create failed: " + lastError);
+        }
+    };
+
+    newMemberModal.show();
+}
+
+// 編輯會員
 function editMember(id) {
     editingMember = members.find(m => m.id === id);
     if (!editingMember) return;
@@ -167,17 +253,22 @@ function editMember(id) {
             alert("Please fill in all fields.");
             return;
         }
+        const body = { id: newId, name: newName };
+        const bodyStr = canonicalStringify(body);
+        const signature = CryptoJS.HmacSHA256(bodyStr, secretKey).toString(CryptoJS.enc.Base64);
+
         try {
             const resp = await fetch(`${API_URL_1}/user/update`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: newId, name: newName })
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-Signature": signature
+                },
+                body: bodyStr
             });
             const result = await resp.json();
             if (result.code === "0000") {
-                // 關閉 modal
                 modal.hide();
-                // 重新載入頁面
                 location.reload();
             } else {
                 alert("Update Failed: " + result.message);
@@ -189,8 +280,14 @@ function editMember(id) {
 }
 function deleteMember(id) {
     if (!confirm(`Are you sure you want to delete member ${id}?`)) return;
-    fetch(`${API_URL_1}/user/delete/${id}`, {
-        method: "DELETE"
+    const endpoint = `/user/delete/${id}`;
+    const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
+    fetch(`${API_URL_1}${endpoint}`, {
+        method: "DELETE",
+        headers: {
+            "X-Signature": signature
+        }
     })
     .then(resp => resp.json())
     .then(result => {
@@ -305,69 +402,6 @@ function showError(msg) {
     tbody.innerHTML = `<tr><td colspan="2" class="text-primary">${msg}</td></tr>`;
 }
 
-/**
- * 顯示新增會員的 Bootstrap Modal，並處理送出事件
- */
-async function showNewMemberModal() {
-    const newMemberModalEl = document.getElementById('newMemberModal');
-    const newMemberModal = new bootstrap.Modal(newMemberModalEl);
-    const newMemberForm = document.getElementById("newMemberForm");
-    const newMemberNameInput = document.getElementById("newMemberName");
-
-    // 重設表單
-    newMemberForm.reset();
-
-    // 綁定 submit 事件（避免重複綁定，先移除再加）
-    newMemberForm.onsubmit = async function(e) {
-        e.preventDefault();
-        const name = newMemberNameInput.value.trim();
-        if (!name) {
-            alert("Please enter a name.");
-            return;
-        }
-
-        // 依序嘗試三個 API
-        const urls = [
-            `${API_URL_1}/user/save`,
-            `${API_URL_2}/user/save`,
-            `${API_URL_3}/user/save`
-        ];
-        let success = false;
-        let lastError = null;
-        for (let i = 0; i < urls.length; i++) {
-            try {
-                const resp = await fetch(urls[i], {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name })
-                });
-                const result = await resp.json();
-                if (result.code === "0000") {
-                    alert("Member created successfully!");
-                    newMemberModal.hide();
-                    fetchMembers();
-                    success = true;
-                    break;
-                } else {
-                    lastError = result.message;
-                }
-            } catch (err) {
-                lastError = err;
-                // 如果是最後一個才顯示錯誤
-                if (i === urls.length - 1) {
-                    alert("Create failed: " + lastError);
-                }
-                // 否則繼續嘗試下一個 URL
-            }
-        }
-        if (!success && lastError) {
-            alert("Create failed: " + lastError);
-        }
-    };
-
-    newMemberModal.show();
-}
-
 function setMemberFilterBtnStyle(active) {
     const btns = [
         { id: "filterAll", key: "All" },
@@ -436,8 +470,17 @@ document.addEventListener("DOMContentLoaded", () => {
         server1Btn.addEventListener("click", async () => {
             showMemberLoadingSpinner();
             setMemberFilterBtnStyle("Server 1");
+            const endpoint = `/user/getAllLocal`;
+            const url = `${API_URL_1}${endpoint}`;
+            const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
             try {
-                const response = await fetch(`${API_URL_1}/user/getAllLocal`);
+                const response = await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "X-Signature": signature
+                    }
+                });
                 const result = await response.json();
                 if (Array.isArray(result)) {
                     members = result;
@@ -459,8 +502,17 @@ document.addEventListener("DOMContentLoaded", () => {
         server2Btn.addEventListener("click", async () => {
             showMemberLoadingSpinner();
             setMemberFilterBtnStyle("Server 2");
+            const endpoint = `/user/getAllLocal`;
+            const url = `${API_URL_2}${endpoint}`;
+            const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
             try {
-                const response = await fetch(`${API_URL_2}/user/getAllLocal`);
+                const response = await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "X-Signature": signature
+                    }
+                });
                 const result = await response.json();
                 if (Array.isArray(result)) {
                     members = result;
@@ -482,8 +534,17 @@ document.addEventListener("DOMContentLoaded", () => {
         server3Btn.addEventListener("click", async () => {
             showMemberLoadingSpinner();
             setMemberFilterBtnStyle("Server 3");
+            const endpoint = `/user/getAllLocal`;
+            const url = `${API_URL_3}${endpoint}`;
+            const signature = CryptoJS.HmacSHA256(endpoint, secretKey).toString(CryptoJS.enc.Base64);
+
             try {
-                const response = await fetch(`${API_URL_3}/user/getAllLocal`);
+                const response = await fetch(url, {
+                    method: "GET",
+                    headers: {
+                        "X-Signature": signature
+                    }
+                });
                 const result = await response.json();
                 if (Array.isArray(result)) {
                     members = result;
